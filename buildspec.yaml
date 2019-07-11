@@ -1,0 +1,32 @@
+version: 0.2
+env:
+  variables:
+    BUILD_FOLDER: 'dist'
+
+phases:
+  install:
+    commands:
+      - echo Build for ${BUILD_ENV}
+      - echo Installing source NPM dependencies...
+      - npm install
+      - npm install -g @angular/cli
+    runtime-versions:
+      nodejs: 10
+  build:
+    commands:
+      - echo Build started on `date`
+      - $(echo "export const commit='${CODEBUILD_RESOLVED_SOURCE_VERSION}';" > 'src/commit.ts')
+      - ng build -c ${BUILD_ENV}
+  post_build:
+    commands:
+      - if
+      - echo removing old files
+      - aws s3 rm s3://${S3_BUCKET} --recursive
+      - echo adding new files
+      - aws s3 cp ${BUILD_FOLDER} s3://${S3_BUCKET} --recursive --acl public-read
+      - echo Build completed on `date`
+artifacts:
+  files:
+    - '**/*'
+  base-directory: 'dist*'
+  discard-paths: yes
